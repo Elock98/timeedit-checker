@@ -1,0 +1,90 @@
+#!/bin/python3
+#----------------------------------------
+#
+# A simple command-line tool for finding
+# schedule conflicts. Specificly developed
+# to be used with timeedit csv files.
+#
+# © 2023 Emil Lock <emil.loock@gmail.com>
+#
+#----------------------------------------
+
+import sys
+import os
+import csv
+
+from optparse import OptionParser
+
+def read_file(path):
+    if not os.path.isfile(path):
+        return None
+    read_file = []
+    with open(path, 'r') as file:
+        filereader = csv.reader(file)
+        for row in filereader:
+            read_file.append(row)
+
+
+    return read_file[4:]
+
+def check(file1, file2, opt):
+    if opt.activity:
+        # Remove all that is not "activity"
+        activity_filter = lambda row: opt.activity.lower() in list(map(lambda x: x.lower(), row))
+        file1 = list(filter(activity_filter, file1))
+        file2 = list(filter(activity_filter, file2))
+
+    # Find collisions
+    collisions = []
+    for f1_row in file1:
+        for f2_row in file2:
+            if f1_row[0] == f2_row[0] and\
+                    f1_row[1] == f2_row[1]:
+                collisions.append(f1_row)
+
+    if len(collisions) == 0:
+        print("No collisions found", file=sys.stdout)
+        return
+
+    print("Collisions found:")
+    for collision in collisions:
+        collision = list(filter(None, collision))
+        print(", ".join(collision))
+
+def get_option_parser():
+    parser = OptionParser(usage="%prog <file1> <file2>",
+                          description="A tool for finding schedule conflicts between two files")
+
+    parser.add_option("--activity",
+                      dest="activity",
+                      default=None,
+                      help="filter by activity type")
+    return parser
+
+def main():
+
+    parser = get_option_parser()
+
+    (opt, arg) = parser.parse_args()
+
+    if len(arg) != 2:
+        parser.print_usage()
+        sys.exit(1)
+
+    file1, file2 = arg
+
+    file1 = read_file(file1)
+    file2 = read_file(file2)
+
+    if not file1:
+        print(file1, " is not a file", file=sys.stderr)
+        sys.exit(1)
+    if not file2:
+        print(file2, " is not a file", file=sys.stderr)
+        sys.exit(1)
+
+    check(file1, file2, opt)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
